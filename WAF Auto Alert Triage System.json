@@ -1,0 +1,335 @@
+{
+  "name": "WAF Auto Alert Triage System",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-528, 16],
+      "id": "fec6c4a8-b970-42bc-8650-e585b38a2e60",
+      "name": "Start Triage (Manual)"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-304, 16],
+      "id": "89e67b07-5021-4085-8c96-c783130d0bae",
+      "name": "Read WAF Logs",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Vm0QGtjZi61cG0Fn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const isPrivate = ip => /^(10\\.|127\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)/.test(ip);\nconst out = [];\n\nfor (const item of $input.all()) {\n  const r = item.json;\n  const src = String(r['Source'] ?? '').trim();\n  const dst = String(r['Destination'] ?? '').trim();\n  const time = String(r['Date/Time'] ?? '').trim();\n  if (!src || !time) continue;                 // skip blank rows\n\n  // Source/Destination are swapped in this export, so use whichever IP is public as the client\n  const client_ip = !isPrivate(src) ? src : (!isPrivate(dst) ? dst : src);\n  const server_ip = client_ip === src ? dst : src;\n\n  out.push({ json: {\n    id: r['#'],\n    time,\n    ts: Date.parse(time.replace(' ', 'T')),\n    action: r['Action'],\n    policy: r['Policy'],\n    client_ip,\n    server_ip,\n    host: r['HTTP Host'],\n    url: r['URL'],\n    main_type: r['Main Type'],\n    sub_type: r['Sub Type'],\n    threat_level: r['Threat Level'],\n  }});\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-80, 16],
+      "id": "736a5e4a-2365-431b-bc5f-c772a72985eb",
+      "name": "Normalize Logs"
+    },
+    {
+      "parameters": {
+        "jsCode": "const WINDOW_MS = 10 * 60 * 1000;\nconst ALLOWLIST = [];   // e.g. ['203.0.113.10'] your own scanners / monitoring IPs\n\nconst events = $input.all().map(i => i.json).sort((a, b) => a.ts - b.ts);\n\nconst byIp = {};\nfor (const e of events) (byIp[e.client_ip] ||= []).push(e);\n\nconst groups = [];\nfor (const [ip, list] of Object.entries(byIp)) {\n  let g = null;\n  for (const e of list) {\n    if (!g || e.ts - g.last_ts > WINDOW_MS) {\n      g = { client_ip: ip, count: 0, types: {}, main_types: new Set(), policies: new Set(),\n            hosts: new Set(), actions: new Set(), first_time: e.time, last_time: e.time,\n            first_ts: e.ts, last_ts: e.ts };\n      groups.push(g);\n    }\n    g.count++;\n    g.last_ts = e.ts;\n    g.last_time = e.time;\n    g.types[e.sub_type] = (g.types[e.sub_type] || 0) + 1;\n    g.main_types.add(e.main_type);\n    g.policies.add(e.policy);\n    g.hosts.add(e.host);\n    g.actions.add(e.action);\n  }\n}\n\n// Several IPs from the same /24 = likely one scanner or botnet\nconst subnetIps = {};\nfor (const g of groups) {\n  g.subnet = g.client_ip.split('.').slice(0, 3).join('.');\n  (subnetIps[g.subnet] ||= new Set()).add(g.client_ip);\n}\n\nreturn groups.map(g => ({ json: {\n  client_ip: g.client_ip,\n  count: g.count,\n  types: g.types,\n  distinct_types: Object.keys(g.types).length,\n  main_types: [...g.main_types],\n  policies: [...g.policies],\n  hosts: [...g.hosts],\n  actions: [...g.actions],\n  first_time: g.first_time,\n  last_time: g.last_time,\n  duration_sec: Math.round((g.last_ts - g.first_ts) / 1000),\n  subnet: g.subnet + '.0/24',\n  subnet_peers: subnetIps[g.subnet].size,\n  allowlisted: ALLOWLIST.includes(g.client_ip),\n}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [208, 16],
+      "id": "60e8cf25-20d7-4efc-abd3-b5355e12b4a3",
+      "name": "Group by Source IP"
+    },
+    {
+      "parameters": {
+        "url": "https://api.abuseipdb.com/api/v2/check",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ipAddress",
+              "value": "={{ $json.client_ip }}"
+            },
+            {
+              "name": "maxAgeInDays",
+              "value": "90"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [528, 16],
+      "id": "7d8bb470-ac94-40aa-b206-feb0e161fa9a",
+      "name": "AbuseIPDB Lookup",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eujs30WuPQT4CIqN",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "dbe74ded-1ccd-4dd8-a6f0-ed0d02b33e63",
+              "leftValue": "={{ $json.allowlisted }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [32, 288],
+      "id": "77d027ab-6a96-47d4-becd-3d93453215b3",
+      "name": "Is Allowlisted"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [656, 304],
+      "id": "a654efde-11b0-4d6f-b8c3-db1de8d5d64d",
+      "name": "Attach Reputation Data"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const { data, ...a } = $input.item.json;\nconst abuse = data?.abuseConfidenceScore ?? 0;\n\nconst TYPE_POINTS = {\n  'Generic Attacks(Extended)': 35,\n  'Information Disclosure': 30,\n  'Illegal HTTP Version': 20,\n  'Header Value Length Violation': 15,\n  'HTTP Parsing Error': 10,\n  'HTTP Duplicated Parameter Name': 10,\n  'Missing POST Content Type': 5,\n  'N/A': 10,\n};\nconst HIGH_RISK = /sql|xss|injection|traversal|command|rce|shell/i;\n\nlet score = 0;\nconst reasons = [];\n\nlet top = 0, topName = '';\nfor (const t of Object.keys(a.types)) {\n  const p = HIGH_RISK.test(t) ? 50 : (TYPE_POINTS[t] ?? 15);\n  if (p > top) { top = p; topName = t; }\n}\nscore += top; reasons.push(`worst type: ${topName} (+${top})`);\n\nif (a.distinct_types > 1) {\n  const p = (a.distinct_types - 1) * 5;\n  score += p; reasons.push(`${a.distinct_types} different types (+${p})`);\n}\n\nconst vol = a.count >= 50 ? 25 : a.count >= 10 ? 15 : a.count >= 5 ? 10 : 0;\nif (vol) { score += vol; reasons.push(`${a.count} events (+${vol})`); }\n\nif (a.subnet_peers >= 3) { score += 15; reasons.push(`${a.subnet_peers} IPs from ${a.subnet} (+15)`); }\n\nif (abuse >= 80) { score += 40; reasons.push(`AbuseIPDB ${abuse}% (+40)`); }\nelse if (abuse >= 40) { score += 20; reasons.push(`AbuseIPDB ${abuse}% (+20)`); }\n\nconst prod = a.policies.some(p => /prod/i.test(p));\nif (prod) { score += 5; reasons.push('production policy (+5)'); }\n\nscore = Math.min(score, 100);\nconst level = score >= 70 ? 'high' : score >= 45 ? 'medium' : score >= 25 ? 'low' : 'ignore';\n\nconst llm_payload = {\n  source_ip: a.client_ip,\n  country: data?.countryCode ?? 'unknown',\n  isp: data?.isp ?? 'unknown',\n  abuseipdb_score: abuse,\n  abuseipdb_total_reports: data?.totalReports ?? 0,\n  events: a.count,\n  window: `${a.first_time} to ${a.last_time}`,\n  attack_types: a.types,\n  waf_actions: a.actions,\n  environment: prod ? 'production' : 'non-production',\n  other_ips_in_same_subnet: a.subnet_peers - 1,\n  score,\n  rule_reasons: reasons,\n};\n\nreturn { json: {\n  ...a,\n  country: data?.countryCode, isp: data?.isp, abuse_score: abuse,\n  score, level, reasons, llm_payload,\n}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1008, 144],
+      "id": "e7810a86-eda3-43ec-b812-30dd5f8a12ad",
+      "name": "Score Alert"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [1248, 400],
+      "id": "a6cf0e05-7cac-49d4-9369-db82ef0556a0",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "7P4EyBHUdQeO6Xv5",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Triage this grouped WAF alert:\n{{ JSON.stringify($json.llm_payload, null, 2) }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a SOC analyst assistant triaging WAF alerts. Use only the data provided and never invent facts. verdict must be one of: true_positive, false_positive, needs_review. The data does not include the server's response, so never claim an attack succeeded or failed. If the evidence is not enough, answer needs_review. Keep the summary to two sentences and give one concrete recommended action."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [1312, 144],
+      "id": "f8ecea58-d3dd-44d3-99f2-1044f1d05838",
+      "name": "AI Triage Summary"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"verdict\": \"true_positive\",\n  \"confidence\": 0.8,\n  \"summary\": \"Two plain-English sentences describing the activity.\",\n  \"recommended_action\": \"One concrete action for the analyst.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [1536, 400],
+      "id": "c45e236d-e384-4a4e-ae5b-17e1ffee144b",
+      "name": "Structured Output Parser1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start Triage (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Read WAF Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read WAF Logs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Logs": {
+      "main": [
+        [
+          {
+            "node": "Group by Source IP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group by Source IP": {
+      "main": [
+        [
+          {
+            "node": "Is Allowlisted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AbuseIPDB Lookup": {
+      "main": [
+        [
+          {
+            "node": "Attach Reputation Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Is Allowlisted": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AbuseIPDB Lookup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Attach Reputation Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Reputation Data": {
+      "main": [
+        [
+          {
+            "node": "Score Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Triage Summary",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Alert": {
+      "main": [
+        [
+          {
+            "node": "AI Triage Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Triage Summary",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a6ea5ff4-0e10-44e9-a3ee-418fdaa44c88",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "386f84a4b8653ead80757b3b2ad9abe244b9a24f123e25ad7deb3d7f41fadb90"
+  },
+  "nodeGroups": [],
+  "id": "CDa4ttmtNoxFggXI",
+  "tags": []
+}

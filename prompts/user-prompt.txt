@@ -1,0 +1,2 @@
+Triage this grouped WAF alert:
+{{ JSON.stringify($json.llm_payload, null, 2) }}

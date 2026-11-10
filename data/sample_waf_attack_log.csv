@@ -1,0 +1,37 @@
+#,Action,Policy,Source,Destination,URL,HTTP Host,Main Type,Sub Type,Threat Level,Date/Time
+1,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 16:11:01
+2,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 16:11:00
+3,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 16:10:58
+4,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 16:10:57
+5,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,Illegal HTTP Version,,2025-03-12 16:10:56
+6,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 16:10:55
+7,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 16:10:53
+8,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.70,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 16:10:52
+9,Alert,WEB_DEV_Policy,10.0.0.56,203.0.113.51,,dev.example.com:8443,HTTP Protocol Constraints,Header Value Length Violation,,2025-03-12 15:47:09
+10,Alert,WEB_DEV_Policy,10.0.0.56,203.0.113.51,,dev.example.com:8443,HTTP Protocol Constraints,Header Value Length Violation,,2025-03-12 15:47:03
+11,Alert,WEB_DEV_Policy,10.0.0.56,203.0.113.51,,dev.example.com:8443,HTTP Protocol Constraints,Header Value Length Violation,,2025-03-12 15:46:58
+12,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.125,,dev.example.com:8443,Signature Detection,Information Disclosure,,2025-03-12 14:45:13
+13,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,dev.example.com:8443,Signature Detection,Information Disclosure,,2025-03-12 14:45:12
+14,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 14:45:12
+15,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.74,,dev.example.com:8443,Signature Detection,Information Disclosure,,2025-03-12 14:45:12
+16,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 14:44:42
+17,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 14:44:34
+18,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 14:44:34
+19,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 14:44:33
+20,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,none,HTTP Protocol Constraints,HTTP Parsing Error,,2025-03-12 14:44:33
+21,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,none,HTTP Protocol Constraints,Illegal HTTP Version,,2025-03-12 14:44:33
+22,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,dev.example.com:8443,Signature Detection,Information Disclosure,,2025-03-12 14:44:32
+23,Alert,WEB_DEV_Policy,10.0.0.56,198.51.100.103,,dev.example.com:8443,Signature Detection,Information Disclosure,,2025-03-12 14:44:32
+24,Alert,PORTAL_PROD_Policy,10.0.0.56,198.51.100.110,,none,GEO IP,N/A,,2025-03-12 13:32:48
+25,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-12 10:56:35
+26,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-12 10:56:35
+27,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-12 10:56:34
+28,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-12 10:56:34
+29,Alert,WEB_PROD_Policy,10.0.0.56,192.0.2.133,,portal.example.com:8444,HTTP Protocol Constraints,HTTP Duplicated Parameter Name,,2025-03-12 08:24:31
+30,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-11 16:30:12
+31,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-11 16:30:12
+32,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-11 16:30:12
+33,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-11 16:30:11
+34,Alert,WEB_PROD_Policy,10.0.0.56,203.0.113.248,,app.example.com:8443,HTTP Protocol Constraints,Missing POST Content Type,,2025-03-11 16:30:11
+35,Alert,WEB_PROD_Policy,10.0.0.56,198.51.100.71,,app.example.com:8443,Signature Detection,Generic Attacks(Extended),,2025-03-11 15:06:28
+36,Alert,PORTAL_PROD_Policy,10.0.0.56,198.51.100.98,,none,GEO IP,N/A,,2025-03-11 12:20:09

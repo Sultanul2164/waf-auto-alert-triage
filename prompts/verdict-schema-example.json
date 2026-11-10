@@ -1,0 +1,6 @@
+{
+  "verdict": "true_positive",
+  "confidence": 0.8,
+  "summary": "Two plain-English sentences describing the activity.",
+  "recommended_action": "One concrete action for the analyst."
+}

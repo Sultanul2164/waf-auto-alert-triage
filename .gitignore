@@ -1,0 +1,15 @@
+# secrets
+.env
+*.env
+*.pem
+*.key
+credentials*
+
+# never commit real data
+data/real*
+data/*private*
+*.har
+
+# misc
+.DS_Store
+node_modules/
